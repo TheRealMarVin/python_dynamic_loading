@@ -2,39 +2,30 @@ import importlib
 import os
 import re
 import sys
-import traceback
 from importlib.util import spec_from_loader, module_from_spec
 
+def get_module_name_from_file(file):
+    file_name = os.path.basename(file)
+    module_name = os.path.splitext(file_name)[0]
+    return module_name
 
-def file_loader(base_path, equip, file, test_method, method_args, method_analyzer=None):
-    path = os.path.join(base_path, equip, file)
+def file_loader(file):
+    code = open(file, "r")
+    file_content = code.readlines()
+    my_code = "".join(x for x in file_content)
 
-    try:
-        print(equip)
-        code = open(path, "r")
-        a = code.readlines()
-        my_code = "".join(b for b in a)
+    module_name = get_module_name_from_file(file)
+    my_spec = spec_from_loader(module_name, loader=None)
+    my_module = module_from_spec(my_spec)
 
-        module_name = equip.replace(" ", "")
-        my_spec = spec_from_loader(module_name, loader=None)
+    exec(my_code, my_module.__dict__)
+    sys.modules[module_name] = my_module
 
-        my_module = module_from_spec(my_spec)
 
-        exec(my_code, my_module.__dict__)
-        sys.modules['my_module'] = my_module
+def call_method_on_module(module, method, method_args={}):
+    my_module = sys.modules[module]
 
-        #mymodule = imp.new_module("{}_module".format(equip.replace(" ", "")))
-        #exec(my_code, mymodule.__dict__)
-        method = getattr(my_module, test_method)
-        method_res = method(method_args[0][0].encode('utf-8').decode('utf-8'))
-        if method_analyzer is not None:
-            res = method_analyzer(method_res)
-        else:
-            res = "OK"
+    method = getattr(my_module, method)
+    method_res = method(**method_args)
 
-    except Exception:
-        traceback.print_exc()
-        res = "FAIL"
-
-    print(res)
-    return res
+    return  method_res
